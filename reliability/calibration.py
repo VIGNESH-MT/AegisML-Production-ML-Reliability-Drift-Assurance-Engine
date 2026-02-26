@@ -7,10 +7,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import warnings  # Added missing import to fix NameError
 from matplotlib.gridspec import GridSpec
 from scipy.stats import gaussian_kde
 from io import BytesIO
 
+# UI Styling Constants
 BG_VOID  = "#020408"
 BG_PANEL = "#060d18"
 BG_CARD  = "#0a1828"
@@ -109,7 +111,10 @@ def reliability_diagram(y_true, y_prob, n_bins=10, title="Reliability Diagram", 
     axb.set_ylabel("n",fontsize=8,labelpad=8)
     axb.set_xlabel("Mean Predicted Probability",fontsize=10,labelpad=8)
     axb.set_ylim(0,max(counts)*1.4 if counts else 1)
-    plt.tight_layout()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        plt.tight_layout()
 
     if return_bytes:
         buf=BytesIO(); fig.savefig(buf,format="png",dpi=150,bbox_inches="tight",facecolor=BG_VOID)
@@ -148,22 +153,27 @@ def confidence_histogram(y_prob, title="Confidence Distribution", return_bytes=F
 
     axs.set_xlim(0,1); axs.set_ylim(0,1); axs.axis("off")
     stats=[("SAMPLES",f"{len(y_prob):,}"),("MEAN",f"{mp:.4f}"),
-           ("MEDIAN",f"{float(np.median(y_prob)):.4f}"),("STD",f"{float(y_prob.std()):.4f}"),
-           ("MIN",f"{float(y_prob.min()):.4f}"),("MAX",f"{float(y_prob.max()):.4f}"),
-           ("HIGH CONF",f"{(y_prob>=0.7).mean():.1%}"),("LOW CONF",f"{(y_prob<=0.3).mean():.1%}")]
+            ("MEDIAN",f"{float(np.median(y_prob)):.4f}"),("STD",f"{float(y_prob.std()):.4f}"),
+            ("MIN",f"{float(y_prob.min()):.4f}"),("MAX",f"{float(y_prob.max()):.4f}"),
+            ("HIGH CONF",f"{(y_prob>=0.7).mean():.1%}"),("LOW CONF",f"{(y_prob<=0.3).mean():.1%}")]
     axs.text(0.5,0.97,"STATS",ha="center",va="top",fontsize=7,color=CYAN,
-             fontfamily="monospace",transform=axs.transAxes)
+              fontfamily="monospace",transform=axs.transAxes)
     for i,(lb,vl) in enumerate(stats):
         yp=0.88-i*0.10
         axs.text(0.06,yp,lb,ha="left",va="center",fontsize=7,color=TEXT_SEC,
-                 fontfamily="monospace",transform=axs.transAxes)
+                  fontfamily="monospace",transform=axs.transAxes)
         axs.text(0.94,yp,vl,ha="right",va="center",fontsize=8,color=CYAN,
-                 fontfamily="monospace",fontweight="bold",transform=axs.transAxes)
+                  fontfamily="monospace",fontweight="bold",transform=axs.transAxes)
         axs.axhline(y=yp-0.04,color=GRID_COL,linewidth=0.4,alpha=0.6)
-    import warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", UserWarning)
-    plt.tight_layout()
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        plt.tight_layout()
+
+    if return_bytes:
+        buf=BytesIO(); fig.savefig(buf,format="png",dpi=150,bbox_inches="tight",facecolor=BG_VOID)
+        plt.close(fig); buf.seek(0); return buf.read()
+    plt.show(); plt.close(fig)
 
 
 def calibration_error_heatmap(y_true, y_prob, n_bins=10, return_bytes=False):
@@ -219,7 +229,10 @@ def calibration_error_heatmap(y_true, y_prob, n_bins=10, return_bytes=False):
     ax2.set_xlim(0,1); ax2.set_ylim(0,1)
     ax2.set_xlabel("Confidence Bin Centre",fontsize=9,labelpad=8)
     ax2.set_ylabel("|Error|",fontsize=8); ax2.set_yticks([])
-    plt.tight_layout()
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        plt.tight_layout()
 
     if return_bytes:
         buf=BytesIO(); fig.savefig(buf,format="png",dpi=150,bbox_inches="tight",facecolor=BG_VOID)
