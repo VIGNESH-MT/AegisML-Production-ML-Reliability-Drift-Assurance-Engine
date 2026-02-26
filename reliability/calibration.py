@@ -160,12 +160,10 @@ def confidence_histogram(y_prob, title="Confidence Distribution", return_bytes=F
         axs.text(0.94,yp,vl,ha="right",va="center",fontsize=8,color=CYAN,
                  fontfamily="monospace",fontweight="bold",transform=axs.transAxes)
         axs.axhline(y=yp-0.04,color=GRID_COL,linewidth=0.4,alpha=0.6)
+    import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", UserWarning)
     plt.tight_layout()
-
-    if return_bytes:
-        buf=BytesIO(); fig.savefig(buf,format="png",dpi=150,bbox_inches="tight",facecolor=BG_VOID)
-        plt.close(fig); buf.seek(0); return buf.read()
-    plt.show(); plt.close(fig)
 
 
 def calibration_error_heatmap(y_true, y_prob, n_bins=10, return_bytes=False):
