@@ -1,0 +1,5 @@
+{
+  "psi_min": 0.1,
+  "psi_max": 0.25,
+  "ks_pvalue_max": 0.05
+}

@@ -1,0 +1,57 @@
+{
+    "verification_timestamp": "2026-02-26T05:00:02.176541+00:00",
+    "system_status": "VERIFIED",
+    "git_commit": "f261d47549e1c7568e895426b0263be4e28794c1",
+    "python_version": "3.14.3",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "methodology": {
+        "drift_metric": "Population Stability Index (PSI)",
+        "statistical_test": "Kolmogorov-Smirnov two-sample test",
+        "risk_model": "Weighted linear combination",
+        "deterministic_seed": 42
+    },
+    "regulatory_alignment": {
+        "eu_ai_act_article_9": "Risk monitoring through drift detection",
+        "article_15": "Accuracy and robustness validation",
+        "article_17": "Technical documentation traceability"
+    },
+    "results": [
+        {
+            "case": "no_drift",
+            "psi": 0.00124,
+            "ks_pvalue": 0.47841,
+            "risk_score": 15.71,
+            "risk_tier": "LOW",
+            "required_action": "Routine Monitoring",
+            "status": "PASS"
+        },
+        {
+            "case": "mild_drift",
+            "psi": 0.24741,
+            "ks_pvalue": 0.0,
+            "risk_score": 42.37,
+            "risk_tier": "MEDIUM",
+            "required_action": "Engineering Review Required",
+            "status": "PASS"
+        },
+        {
+            "case": "severe_drift",
+            "psi": 2.26287,
+            "ks_pvalue": 0.0,
+            "risk_score": 80.0,
+            "risk_tier": "HIGH",
+            "required_action": "Immediate Escalation Required",
+            "status": "PASS"
+        },
+        {
+            "case": "bias_assessment",
+            "statistical_parity_difference": 0.39321,
+            "disparate_impact_ratio": 2.3227,
+            "risk_score": 7.86,
+            "risk_tier": "LOW",
+            "required_action": "Routine Monitoring",
+            "status": "PASS"
+        }
+    ],
+    "integrity_hash_sha256": "af2a8f514d85eb910ccc7ac978163b8ee57ff99e65f15c754080f85d4ace30b8"
+}
