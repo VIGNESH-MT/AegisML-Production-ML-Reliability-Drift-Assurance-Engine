@@ -601,9 +601,13 @@ def build_3d_calibration_surface(y_true, y_prob, n_bins=10):
             yaxis=yaxis_cfg,
             zaxis=zaxis_cfg,
             bgcolor="rgba(4,3,8,0.0)",
-            camera=dict(eye=dict(x=1.5, y=-1.8, z=1.1), up=dict(x=0, y=0, z=1)),
-            aspectmode="manual",
-            aspectratio=dict(x=1.6, y=1.2, z=0.7),
+            camera=dict(
+    eye=dict(
+        x=1.6*np.cos(st.session_state.get("cam_angle",0)),
+        y=1.6*np.sin(st.session_state.get("cam_angle",0)),
+        z=1.1
+    )
+)
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -623,7 +627,10 @@ def build_3d_calibration_surface(y_true, y_prob, n_bins=10):
         ),
     )
     return fig
+if "cam_angle" not in st.session_state:
+    st.session_state.cam_angle = 0
 
+st.session_state.cam_angle += 0.02
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIDEBAR
@@ -800,132 +807,429 @@ with col_left:
     st.markdown('<div class="sp-card" style="padding:24px 24px 0;">', unsafe_allow_html=True)
 
     # Confidence histogram
-    bc  = np.linspace(0, 1, n_bins + 1)
-    mid = 0.5 * (bc[:-1] + bc[1:])
-    cnt, _ = np.histogram(y_prob, bins=bc)
+bc  = np.linspace(0, 1, n_bins + 1)
+mid = 0.5 * (bc[:-1] + bc[1:])
+cnt, _ = np.histogram(y_prob, bins=bc)
 
-    fig_hist = go.Figure()
-    fig_hist.add_trace(go.Bar(
-        x=mid, y=cnt, width=0.85 / n_bins,
-        marker=dict(
-            color=cnt,
-            colorscale=[[0, "rgba(229,9,20,0.3)"], [1, "rgba(229,9,20,0.85)"]],
-            line=dict(color="rgba(229,9,20,0.8)", width=1.5),
-        ),
-        hovertemplate="<b>Prob Bin:</b> %{x:.2f}<br><b>Count:</b> %{y}<extra></extra>",
-    ))
-    fig_hist.add_trace(go.Scatter(
-        x=mid, y=cnt, mode="lines",
-        line=dict(color="rgba(229,9,20,0.9)", width=2.5),
-        fill="tozeroy", fillcolor="rgba(229,9,20,0.07)",
-        showlegend=False, hoverinfo="skip",
-    ))
-    fig_hist.update_layout(
-        **_BASE,
-        title=dict(text="CONFIDENCE DENSITY", font=dict(color="#fff", size=15, family="Bebas Neue"), x=.02),
-        xaxis=dict(**_AXIS, title="Predicted Probability", range=[0, 1]),
-        yaxis=dict(**_AXIS, title="Sample Count"),
-        height=265, bargap=.12, showlegend=False,
-    )
-    st.plotly_chart(fig_hist, use_container_width=True)
+fig_hist = go.Figure()
 
-    # 2D Reliability curve
-    prob_true_rc, prob_pred_rc = calibration_curve(y_true, y_prob, n_bins=n_bins, strategy="uniform")
-    fig_rel = go.Figure()
-    fig_rel.add_trace(go.Scatter(
-        x=[0, 1], y=[0, 1], mode="lines",
-        line=dict(dash="dot", color="rgba(229,9,20,0.28)", width=1.5), hoverinfo="skip",
-    ))
-    fig_rel.add_trace(go.Scatter(
-        x=prob_pred_rc, y=prob_true_rc, mode="lines+markers", name="Model",
-        line=dict(color="#E50914", width=3),
-        marker=dict(size=9, color="#040406", line=dict(color="#E50914", width=2.5)),
-        fill="tozeroy", fillcolor="rgba(229,9,20,0.07)",
-        hovertemplate="<b>Predicted:</b> %{x:.3f}<br><b>Actual:</b> %{y:.3f}<extra></extra>",
-    ))
-    fig_rel.update_layout(
-        **_BASE,
-        title=dict(text="RELIABILITY CURVE", font=dict(color="#fff", size=15, family="Bebas Neue"), x=.02),
-        xaxis=dict(**_AXIS, title="Mean Predicted Probability", range=[0, 1]),
-        yaxis=dict(**_AXIS, title="Fraction of Positives", range=[0, 1]),
-        height=295, showlegend=False,
-    )
-    st.plotly_chart(fig_rel, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+fig_hist.add_trace(go.Bar(
 
-with col_right:
-    st.markdown("""
-    <div class="sp-card" style="margin-bottom:18px;">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:.67rem;
-                  color:#E50914;letter-spacing:.15em;margin-bottom:22px;">▸ DIAGNOSTIC VECTORS</div>""",
-    unsafe_allow_html=True)
-    for lbl, val, alert in [
-        ("Expected Cal. Error (ECE)", f"{calibration['ece']:.4f}",               calibration["ece"] > 0.10),
-        ("Maximum Cal. Error (MCE)",  f"{calibration['mce']:.4f}",               False),
-        ("Overconfidence Gap",        f"{calibration['overconfidence_gap']:.4f}", False),
-        ("Analysis Bin Count",        str(calibration["n_bins"]),                 False),
-    ]:
-        vc = "#EF4444" if alert else "#fff"
-        st.markdown(f"""
-        <div style="display:flex;justify-content:space-between;padding:12px 0;
-                    border-bottom:1px solid rgba(229,9,20,.07);">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-size:.97rem;
-                       font-weight:600;color:#C0C8D8;">{lbl}</span>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;
-                       font-weight:600;color:{vc};">{val}</span>
-        </div>""", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    x=mid,
+    y=cnt,
+    width=0.85 / n_bins,
 
-    st.markdown("""
-    <div class="sp-card">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:.67rem;
-                  color:#E50914;letter-spacing:.15em;margin-bottom:18px;">▸ RISK DECOMPOSITION</div>""",
-    unsafe_allow_html=True)
-    for comp, info in risk["component_scores"].items():
-        component_risk_row(comp, info["score"], info["level"])
-    st.markdown("</div>", unsafe_allow_html=True)
+    marker=dict(
+        color=cnt,
 
+        colorscale=[
+            [0,"#00FFAA"],
+            [0.35,"#00C8FF"],
+            [0.6,"#FFD400"],
+            [0.8,"#FF6A00"],
+            [1,"#E50914"]
+        ],
+
+        line=dict(color="#E50914", width=1.5)
+    ),
+
+    hovertemplate=
+    "<b>Probability:</b> %{x:.2f}<br>"
+    "<b>Sample Count:</b> %{y}<extra></extra>"
+))
+
+
+fig_hist.add_trace(go.Scatter(
+
+    x=mid,
+    y=cnt,
+
+    mode="lines",
+
+    line=dict(
+        color="#E50914",
+        width=3
+    ),
+
+    fill="tozeroy",
+    fillcolor="rgba(229,9,20,0.08)",
+
+    showlegend=False,
+    hoverinfo="skip"
+))
+
+
+fig_hist.update_layout(
+
+    **_BASE,
+
+    title=dict(
+        text="CONFIDENCE DENSITY",
+        font=dict(color="#fff", size=15, family="Bebas Neue"),
+        x=.02
+    ),
+
+    xaxis=dict(
+        **_AXIS,
+        title="Predicted Probability",
+        range=[0,1]
+    ),
+
+    yaxis=dict(
+        **_AXIS,
+        title="Sample Count"
+    ),
+
+    height=265,
+    bargap=.12,
+    showlegend=False
+)
+
+st.plotly_chart(fig_hist, use_container_width=True)
+
+
+
+# ───────────────── 2D RELIABILITY CURVE ─────────────────
+
+prob_true_rc, prob_pred_rc = calibration_curve(
+    y_true,
+    y_prob,
+    n_bins=n_bins,
+    strategy="uniform"
+)
+
+fig_rel = go.Figure()
+
+
+# Ideal calibration line
+fig_rel.add_trace(go.Scatter(
+
+    x=[0,1],
+    y=[0,1],
+
+    mode="lines",
+
+    line=dict(
+        dash="dash",
+        color="rgba(0,200,255,0.6)",
+        width=2
+    ),
+
+    name="Ideal"
+))
+
+
+# Model reliability curve
+fig_rel.add_trace(go.Scatter(
+
+    x=prob_pred_rc,
+    y=prob_true_rc,
+
+    mode="lines+markers",
+
+    line=dict(
+        color="#E50914",
+        width=4
+    ),
+
+    marker=dict(
+
+        size=10,
+
+        color=prob_true_rc,
+
+        colorscale="Turbo",
+
+        line=dict(
+            color="white",
+            width=2
+        )
+    ),
+
+    fill="tozeroy",
+    fillcolor="rgba(229,9,20,0.08)",
+
+    hovertemplate=
+    "<b>Predicted:</b> %{x:.3f}<br>"
+    "<b>Actual:</b> %{y:.3f}<extra></extra>"
+))
+
+
+fig_rel.update_layout(
+
+    **_BASE,
+
+    title=dict(
+        text="RELIABILITY CURVE",
+        font=dict(color="#fff", size=15, family="Bebas Neue"),
+        x=.02
+    ),
+
+    xaxis=dict(
+        **_AXIS,
+        title="Mean Predicted Probability",
+        range=[0,1]
+    ),
+
+    yaxis=dict(
+        **_AXIS,
+        title="Fraction of Positives",
+        range=[0,1]
+    ),
+
+    height=295,
+    showlegend=False
+)
+
+
+st.plotly_chart(fig_rel, use_container_width=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ── DISTRIBUTION SHIFT ──────────────────────────────────────────────────────
-if drift_bytes or pred_drift:
-    section_header("Distribution Shift", "Covariate shift · Population Stability Index · Feature drift")
+if drift_bytes or pred_drift or feature_drift:
+
+    section_header(
+        "Distribution Shift",
+        "Covariate shift · Population Stability Index · Feature drift"
+    )
+
     d1, d2 = st.columns([1.55, 1])
+
+    # ───────────────── LEFT PANEL ─────────────────
     with d1:
+
+        # Existing drift heatmap
         if drift_bytes:
             st.markdown('<div class="sp-card">', unsafe_allow_html=True)
             st.image(drift_bytes, use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
+
+       # ───────────────── NEW 3D DRIFT VISUALIZATION ─────────────────
+if ref_df is not None and prod_feat_df is not None:
+
+    st.markdown(
+        """
+        <div class="sp-card" style="margin-top:18px;">
+        <div style="font-family:'Share Tech Mono',monospace;
+                    font-size:.66rem;color:#E50914;
+                    letter-spacing:.13em;margin-bottom:6px;">
+        ▸ 3D FEATURE DRIFT LANDSCAPE
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    common_cols = list(set(ref_df.columns).intersection(set(prod_feat_df.columns)))
+
+    feature_names = []
+    ref_means = []
+    prod_means = []
+    drift_vals = []
+
+    for col in common_cols:
+
+        if pd.api.types.is_numeric_dtype(ref_df[col]):
+
+            r = ref_df[col].dropna().values
+            p = prod_feat_df[col].dropna().values
+
+            if len(r) == 0 or len(p) == 0:
+                continue
+
+            rm = np.mean(r)
+            pm = np.mean(p)
+
+            drift = abs(rm - pm)
+
+            feature_names.append(col)
+            ref_means.append(rm)
+            prod_means.append(pm)
+            drift_vals.append(drift)
+
+    if len(feature_names) > 0:
+
+        x = np.arange(len(feature_names))
+
+        fig_drift3d = go.Figure()
+
+        # ── MAIN DRIFT POINTS
+        fig_drift3d.add_trace(go.Scatter3d(
+
+            x=x,
+            y=ref_means,
+            z=prod_means,
+
+            mode="markers+lines",
+
+            marker=dict(
+
+                size=11,
+
+                color=drift_vals,
+
+                colorscale=[
+                    [0,"#00FFAA"],
+                    [0.25,"#00C8FF"],
+                    [0.5,"#FFD400"],
+                    [0.75,"#FF6A00"],
+                    [1,"#E50914"]
+                ],
+
+                opacity=0.95,
+
+                line=dict(
+                    color="white",
+                    width=1
+                )
+            ),
+
+            line=dict(
+                color="rgba(229,9,20,0.5)",
+                width=3
+            ),
+
+            text=feature_names,
+
+            hovertemplate=
+            "<b>Feature:</b> %{text}<br>"
+            "<b>Reference Mean:</b> %{y:.4f}<br>"
+            "<b>Production Mean:</b> %{z:.4f}<br>"
+            "<b>Drift Magnitude:</b> %{marker.color:.4f}<extra></extra>"
+        ))
+
+
+        # ── DRIFT PILLARS
+        for i in range(len(x)):
+
+            fig_drift3d.add_trace(go.Scatter3d(
+
+                x=[x[i], x[i]],
+                y=[ref_means[i], ref_means[i]],
+                z=[0, prod_means[i]],
+
+                mode="lines",
+
+                line=dict(
+                    color="rgba(229,9,20,0.35)",
+                    width=2
+                ),
+
+                showlegend=False,
+                hoverinfo="skip"
+            ))
+
+
+        fig_drift3d.update_layout(
+
+            scene=dict(
+
+                xaxis=dict(
+                    title="Feature",
+                    tickmode="array",
+                    tickvals=x,
+                    ticktext=feature_names,
+                    gridcolor="rgba(229,9,20,0.1)"
+                ),
+
+                yaxis=dict(
+                    title="Reference Distribution",
+                    gridcolor="rgba(229,9,20,0.08)"
+                ),
+
+                zaxis=dict(
+                    title="Production Distribution",
+                    gridcolor="rgba(229,9,20,0.08)"
+                ),
+
+                bgcolor="rgba(0,0,0,0)",
+
+                camera=dict(
+                    eye=dict(x=1.4, y=-1.6, z=1.2)
+                )
+            ),
+
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+
+            margin=dict(l=0, r=0, t=10, b=0),
+
+            height=440
+        )
+
+        st.plotly_chart(fig_drift3d, use_container_width=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    # ───────────────── RIGHT PANEL ─────────────────
     with d2:
+
         if pred_drift or feature_drift:
-            st.markdown("""
-            <div class="sp-card">
-              <div style="font-family:'Share Tech Mono',monospace;font-size:.67rem;
-                          color:#E50914;letter-spacing:.15em;margin-bottom:20px;">▸ SHIFT SIGNALS</div>""",
-            unsafe_allow_html=True)
-            if pred_drift:
-                for lbl, val in [("KL Divergence",  f"{pred_drift['kl_divergence']:.4f}"),
-                                  ("Prediction PSI", f"{pred_drift['psi']:.4f}")]:
-                    st.markdown(f"""
-                    <div style="display:flex;justify-content:space-between;padding:12px 0;
-                                border-bottom:1px solid rgba(229,9,20,.07);">
-                      <span style="font-family:'Barlow Condensed',sans-serif;font-size:.97rem;
-                                   font-weight:600;color:#C0C8D8;">{lbl}</span>
-                      <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;
-                                   color:#fff;">{val}</span>
-                    </div>""", unsafe_allow_html=True)
-            if feature_drift:
-                st.markdown(f"""
-                <div style="display:flex;justify-content:space-between;padding:12px 0;
-                            border-bottom:1px solid rgba(229,9,20,.07);">
-                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:.97rem;
-                               font-weight:600;color:#C0C8D8;">Feature PSI</span>
-                  <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;
-                               color:#fff;">{feature_drift['overall_drift_score']:.4f}</span>
+
+            st.markdown(
+                """
+                <div class="sp-card">
+                <div style="font-family:'Share Tech Mono',monospace;
+                            font-size:.67rem;color:#E50914;
+                            letter-spacing:.15em;margin-bottom:20px;">
+                ▸ SHIFT SIGNALS
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:.95rem;
-                            color:#A0AEC0;padding-top:14px;line-height:1.6;">
-                  {feature_drift['overall_interpretation']}</div>""",
-                unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True
+            )
+
+            if pred_drift:
+
+                for lbl, val in [
+                    ("KL Divergence", f"{pred_drift['kl_divergence']:.4f}"),
+                    ("Prediction PSI", f"{pred_drift['psi']:.4f}")
+                ]:
+
+                    st.markdown(
+                        f"""
+                        <div style="display:flex;justify-content:space-between;
+                                    padding:12px 0;
+                                    border-bottom:1px solid rgba(229,9,20,.07);">
+                        <span style="font-family:'Barlow Condensed',sans-serif;
+                                     font-size:.97rem;font-weight:600;color:#C0C8D8;">
+                        {lbl}</span>
+
+                        <span style="font-family:'Share Tech Mono',monospace;
+                                     font-size:.9rem;color:#fff;">
+                        {val}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+            if feature_drift:
+
+                st.markdown(
+                    f"""
+                    <div style="display:flex;justify-content:space-between;
+                                padding:12px 0;
+                                border-bottom:1px solid rgba(229,9,20,.07);">
+
+                    <span style="font-family:'Barlow Condensed',sans-serif;
+                                 font-size:.97rem;font-weight:600;color:#C0C8D8;">
+                    Feature PSI
+                    </span>
+
+                    <span style="font-family:'Share Tech Mono',monospace;
+                                 font-size:.9rem;color:#fff;">
+                    {feature_drift['overall_drift_score']:.4f}
+                    </span>
+
+                    </div>
+
+                    <div style="font-family:'Barlow Condensed',sans-serif;
+                                font-size:.95rem;color:#A0AEC0;
+                                padding-top:14px;line-height:1.6;">
+                    {feature_drift['overall_interpretation']}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
             st.markdown("</div>", unsafe_allow_html=True)
 
 
